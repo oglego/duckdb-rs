@@ -9,7 +9,7 @@ use std::{
 use super::{Appender, Config, Connection, Result, ffi};
 use crate::{
     error::{
-        Error, result_from_duckdb_appender, result_from_duckdb_arrow, result_from_duckdb_extract,
+        Error, ErrorCode, result_from_duckdb_appender, result_from_duckdb_arrow, result_from_duckdb_extract,
         result_from_duckdb_prepare,
     },
     raw_statement::RawStatement,
@@ -72,7 +72,7 @@ impl InnerConnection {
             if r != ffi::DuckDBSuccess {
                 ffi::duckdb_disconnect(&mut con);
                 return Err(Error::DuckDBFailure(
-                    ffi::Error::new(r),
+                    ErrorCode::Connection,
                     Some("connect error".to_owned()),
                 ));
             }
@@ -94,7 +94,7 @@ impl InnerConnection {
             if r != ffi::DuckDBSuccess {
                 let msg = Some(CStr::from_ptr(c_err).to_string_lossy().to_string());
                 ffi::duckdb_free(c_err as *mut c_void);
-                return Err(Error::DuckDBFailure(ffi::Error::new(r), msg));
+                return Err(Error::DuckDBFailure(ErrorCode::Connection, msg));
             }
             Self::new_from_raw_db(db, true)
         }
@@ -178,13 +178,15 @@ impl InnerConnection {
 
         let error = if rc != ffi::DuckDBSuccess {
             unsafe {
+                let raw_type = ffi::duckdb_result_error_type(&mut result as *mut _);
+                let code = ErrorCode::from(raw_type);
                 let c_err = ffi::duckdb_result_error(&mut result as *mut _);
                 let msg = if c_err.is_null() {
                     None
                 } else {
                     Some(CStr::from_ptr(c_err).to_string_lossy().to_string())
                 };
-                Some(Error::DuckDBFailure(ffi::Error::new(rc), msg))
+                Some(Error::DuckDBFailure(ErrorCode::from(raw_type), msg))
             }
         } else {
             None

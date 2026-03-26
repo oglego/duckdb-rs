@@ -1,5 +1,5 @@
 use super::{Result, ffi};
-use crate::error::Error;
+use crate::error::{Error, ErrorCode};
 use std::{default::Default, ffi::CString, os::raw::c_char, ptr};
 
 use strum::{AsRefStr, Display, EnumString};
@@ -140,7 +140,7 @@ impl Config {
         };
         if state != ffi::DuckDBSuccess {
             return Err(Error::DuckDBFailure(
-                ffi::Error::new(state),
+                ErrorCode::InvalidConfiguration,
                 Some(format!("set {key}:{value} error")),
             ));
         }

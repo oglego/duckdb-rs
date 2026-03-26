@@ -5,6 +5,7 @@ use std::ops::Deref;
 use crate::{
     Connection, DatabaseName, Result, Row,
     error::Error,
+    error::ErrorCode,
     ffi,
     types::{ToSql, ToSqlOutput, ValueRef},
 };
@@ -34,7 +35,7 @@ impl Sql {
             Ok(())
         } else {
             Err(Error::DuckDBFailure(
-                ffi::Error::new(ffi::DuckDBError),
+                ErrorCode::InvalidInput,
                 Some(format!("Invalid keyword \"{keyword}\"")),
             ))
         }
@@ -75,7 +76,7 @@ impl Sql {
             }
             _ => {
                 return Err(Error::DuckDBFailure(
-                    ffi::Error::new(ffi::DuckDBError),
+                    ErrorCode::NotImplemented,
                     Some(format!("Unsupported value \"{value:?}\"")),
                 ));
             }

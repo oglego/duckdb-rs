@@ -78,7 +78,7 @@ pub use crate::{
     column::Column,
     config::{AccessMode, Config, DefaultNullOrder, DefaultOrder},
     error::Error,
-    ffi::ErrorCode,
+    error::ErrorCode,
     inner_connection::InterruptHandle,
     params::{Params, ParamsFromIter, params_from_iter},
     row::{AndThenRows, Map, MappedRows, Row, RowIndex, Rows},
@@ -1094,9 +1094,9 @@ mod test {
         assert!(result.is_err());
 
         match result.unwrap_err() {
-            Error::DuckDBFailure(err, _) => {
+            Error::DuckDBFailure(code, _) => {
                 // TODO(wangfenjin): Update errorcode
-                assert_eq!(err.code, ErrorCode::Unknown);
+                assert_eq!(code, ErrorCode::Constraint);
             }
             err => panic!("Unexpected error {err}"),
         }

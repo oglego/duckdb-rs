@@ -7,7 +7,7 @@ use arrow::{
 };
 
 use super::{Result, ffi};
-use crate::{Error, core::LogicalTypeHandle, error::result_from_duckdb_arrow};
+use crate::{Error, ErrorCode, core::LogicalTypeHandle, error::result_from_duckdb_arrow};
 #[cfg(feature = "polars")]
 use polars_core::utils::arrow as polars_arrow;
 
@@ -323,6 +323,9 @@ impl RawStatement {
 
             let rc = ffi::duckdb_execute_prepared_streaming(self.ptr, &mut out);
             if rc != ffi::DuckDBSuccess {
+                let raw_type = ffi::duckdb_result_error_type(&mut out);
+                let code = ErrorCode::from(raw_type);
+
                 let msg = {
                     let c_err = ffi::duckdb_result_error(&mut out);
                     if c_err.is_null() {
@@ -332,7 +335,7 @@ impl RawStatement {
                     }
                 };
                 ffi::duckdb_destroy_result(&mut out);
-                return Err(Error::DuckDBFailure(ffi::Error::new(rc), msg));
+                return Err(Error::DuckDBFailure(code, msg));
             }
 
             // Check if the result is truly streaming or materialized
@@ -379,7 +382,7 @@ impl RawStatement {
             // Range check above ensures this shouldn't be null, but check defensively
             if name_ptr.is_null() {
                 return Err(Error::DuckDBFailure(
-                    ffi::Error::new(ffi::DuckDBError),
+                    ErrorCode::Binder,
                     Some(format!("Could not retrieve parameter name for index {idx}")),
                 ));
             }

@@ -7,13 +7,121 @@ use crate::{
 };
 use std::{error, ffi::CStr, fmt, path::PathBuf, str};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ErrorCode {
+    Invalid = 0,
+    OutOfRange = 1,
+    Conversion = 2,
+    UnknownType = 3,
+    Decimal = 4,
+    MismatchType = 5,
+    DivideByZero = 6,
+    ObjectSize = 7,
+    InvalidType = 8,
+    Serialization = 9,
+    Transaction = 10,
+    NotImplemented = 11,
+    Expression = 12,
+    Catalog = 13,
+    Parser = 14,
+    Planner = 15,
+    Scheduler = 16,
+    Executor = 17,
+    Constraint = 18,
+    Index = 19,
+    Stat = 20,
+    Connection = 21,
+    Syntax = 22,
+    Settings = 23,
+    Binder = 24,
+    Network = 25,
+    Optimizer = 26,
+    NullPointer = 27,
+    IO = 28,
+    Interrupt = 29,
+    Fatal = 30,
+    Internal = 31,
+    InvalidInput = 32,
+    OutOfMemory = 33,
+    Permission = 34,
+    ParameterNotResolved = 35,
+    ParameterNotAllowed = 36,
+    Dependency = 37,
+    Http = 38,
+    MissingExtension = 39,
+    Autoload = 40,
+    Sequence = 41,
+    InvalidConfiguration = 42,
+    #[doc(hidden)]
+    Unknown = 999,
+}
+
+impl From<ffi::duckdb_error_type> for ErrorCode {
+    fn from(code: ffi::duckdb_error_type) -> Self {
+        match code {
+            ffi::duckdb_error_type_DUCKDB_ERROR_INVALID => ErrorCode::Invalid,
+            ffi::duckdb_error_type_DUCKDB_ERROR_OUT_OF_RANGE => ErrorCode::OutOfRange,
+            ffi::duckdb_error_type_DUCKDB_ERROR_CONVERSION => ErrorCode::Conversion,
+            ffi::duckdb_error_type_DUCKDB_ERROR_UNKNOWN_TYPE => ErrorCode::UnknownType,
+            ffi::duckdb_error_type_DUCKDB_ERROR_DECIMAL => ErrorCode::Decimal,
+            ffi::duckdb_error_type_DUCKDB_ERROR_MISMATCH_TYPE => ErrorCode::MismatchType,
+            ffi::duckdb_error_type_DUCKDB_ERROR_DIVIDE_BY_ZERO => ErrorCode::DivideByZero,
+            ffi::duckdb_error_type_DUCKDB_ERROR_OBJECT_SIZE => ErrorCode::ObjectSize,
+            ffi::duckdb_error_type_DUCKDB_ERROR_INVALID_TYPE => ErrorCode::InvalidType,
+            ffi::duckdb_error_type_DUCKDB_ERROR_SERIALIZATION => ErrorCode::Serialization,
+            ffi::duckdb_error_type_DUCKDB_ERROR_TRANSACTION => ErrorCode::Transaction,
+            ffi::duckdb_error_type_DUCKDB_ERROR_NOT_IMPLEMENTED => ErrorCode::NotImplemented,
+            ffi::duckdb_error_type_DUCKDB_ERROR_EXPRESSION => ErrorCode::Expression,
+            ffi::duckdb_error_type_DUCKDB_ERROR_CATALOG => ErrorCode::Catalog,
+            ffi::duckdb_error_type_DUCKDB_ERROR_PARSER => ErrorCode::Parser,
+            ffi::duckdb_error_type_DUCKDB_ERROR_PLANNER => ErrorCode::Planner,
+            ffi::duckdb_error_type_DUCKDB_ERROR_SCHEDULER => ErrorCode::Scheduler,
+            ffi::duckdb_error_type_DUCKDB_ERROR_EXECUTOR => ErrorCode::Executor,
+            ffi::duckdb_error_type_DUCKDB_ERROR_CONSTRAINT => ErrorCode::Constraint,
+            ffi::duckdb_error_type_DUCKDB_ERROR_INDEX => ErrorCode::Index,
+            ffi::duckdb_error_type_DUCKDB_ERROR_STAT => ErrorCode::Stat,
+            ffi::duckdb_error_type_DUCKDB_ERROR_CONNECTION => ErrorCode::Connection,
+            ffi::duckdb_error_type_DUCKDB_ERROR_SYNTAX => ErrorCode::Syntax,
+            ffi::duckdb_error_type_DUCKDB_ERROR_SETTINGS => ErrorCode::Settings,
+            ffi::duckdb_error_type_DUCKDB_ERROR_BINDER => ErrorCode::Binder,
+            ffi::duckdb_error_type_DUCKDB_ERROR_NETWORK => ErrorCode::Network,
+            ffi::duckdb_error_type_DUCKDB_ERROR_OPTIMIZER => ErrorCode::Optimizer,
+            ffi::duckdb_error_type_DUCKDB_ERROR_NULL_POINTER => ErrorCode::NullPointer,
+            ffi::duckdb_error_type_DUCKDB_ERROR_IO => ErrorCode::IO,
+            ffi::duckdb_error_type_DUCKDB_ERROR_INTERRUPT => ErrorCode::Interrupt,
+            ffi::duckdb_error_type_DUCKDB_ERROR_FATAL => ErrorCode::Fatal,
+            ffi::duckdb_error_type_DUCKDB_ERROR_INTERNAL => ErrorCode::Internal,
+            ffi::duckdb_error_type_DUCKDB_ERROR_INVALID_INPUT => ErrorCode::InvalidInput,
+            ffi::duckdb_error_type_DUCKDB_ERROR_OUT_OF_MEMORY => ErrorCode::OutOfMemory,
+            ffi::duckdb_error_type_DUCKDB_ERROR_PERMISSION => ErrorCode::Permission,
+            ffi::duckdb_error_type_DUCKDB_ERROR_PARAMETER_NOT_RESOLVED => ErrorCode::ParameterNotResolved,
+            ffi::duckdb_error_type_DUCKDB_ERROR_PARAMETER_NOT_ALLOWED => ErrorCode::ParameterNotAllowed,
+            ffi::duckdb_error_type_DUCKDB_ERROR_DEPENDENCY => ErrorCode::Dependency,
+            ffi::duckdb_error_type_DUCKDB_ERROR_HTTP => ErrorCode::Http,
+            ffi::duckdb_error_type_DUCKDB_ERROR_MISSING_EXTENSION => ErrorCode::MissingExtension,
+            ffi::duckdb_error_type_DUCKDB_ERROR_AUTOLOAD => ErrorCode::Autoload,
+            ffi::duckdb_error_type_DUCKDB_ERROR_SEQUENCE => ErrorCode::Sequence,
+            ffi::duckdb_error_type_DUCKDB_INVALID_CONFIGURATION => ErrorCode::InvalidConfiguration,
+            _ => ErrorCode::Unknown,
+        }
+    }
+}
+
+impl fmt::Display for ErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // This reuses the Debug representation (e.g., "Http")
+        // as the Display string.
+        write!(f, "{:?}", self)
+    }
+}
+
 /// Enum listing possible errors from duckdb.
 #[derive(Debug)]
 #[allow(clippy::enum_variant_names)]
 #[non_exhaustive]
 pub enum Error {
     /// An error from an underlying DuckDB call.
-    DuckDBFailure(ffi::Error, Option<String>),
+    DuckDBFailure(ErrorCode, Option<String>),
 
     /// Error when the value of a particular column is requested, but it cannot
     /// be converted to the requested Rust type.
@@ -203,6 +311,8 @@ impl fmt::Display for Error {
     }
 }
 
+impl std::error::Error for ErrorCode {}
+
 impl error::Error for Error {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match *self {
@@ -235,7 +345,7 @@ impl error::Error for Error {
 
 #[inline]
 fn error_from_duckdb_code(code: ffi::duckdb_state, message: Option<String>) -> Result<()> {
-    Err(Error::DuckDBFailure(ffi::Error::new(code), message))
+    Err(Error::DuckDBFailure(ErrorCode::Unknown, message))
 }
 
 #[cold]
