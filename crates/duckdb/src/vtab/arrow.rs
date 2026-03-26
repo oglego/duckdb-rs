@@ -1734,10 +1734,7 @@ mod test {
         assert_eq!(
             res,
             crate::error::Error::DuckDBFailure(
-                crate::ffi::Error {
-                    code: crate::ffi::ErrorCode::Unknown,
-                    extended_code: 1
-                },
+                crate::error::ErrorCode::InvalidInput,
                 Some("Invalid Input Error: Data type \"Decimal256(76, 10)\" not yet supported by ArrowVTab".to_owned())
             )
         );

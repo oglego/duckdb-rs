@@ -1036,6 +1036,32 @@ mod test {
     }
 
     #[test]
+    fn test_remote_parquet_http_error() {
+        let db = Connection::open_in_memory().unwrap();
+        let err: Error = db
+            .query_row(
+                "SELECT count(*) FROM read_parquet('https://duckdb.org/does-not-exist.parquet')",
+                [],
+                |r| r.get::<_, i64>(0),
+            )
+            .unwrap_err();
+
+        match err {
+            Error::DuckDBFailure(code, Some(msg)) => {
+                assert_eq!(code, ErrorCode::Http, "unexpected message: {msg}");
+                assert!(
+                    msg.contains("HTTP")
+                        || msg.contains("http")
+                        || msg.contains("Failed")
+                        || msg.contains("Not found"),
+                    "unexpected message: {msg}"
+                );
+            }
+            other => panic!("unexpected error variant: {other:?}"),
+        }
+    }
+
+    #[test]
     fn test_optional() -> Result<()> {
         let db = checked_memory_handle();
 
@@ -1896,4 +1922,5 @@ mod test {
         assert_eq!(results, vec![Some("CA".into()), None, Some("NY".into())]);
         Ok(())
     }
+
 }

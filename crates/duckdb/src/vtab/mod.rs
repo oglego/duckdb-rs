@@ -192,7 +192,7 @@ impl InnerConnection {
         unsafe {
             let rc = ffi::duckdb_register_table_function(self.con, table_function.ptr);
             if rc != ffi::DuckDBSuccess {
-                return Err(Error::DuckDBFailure(ffi::Error::new(rc), None));
+                return Err(Error::DuckDBFailure(crate::error::ErrorCode::Unknown, None));
             }
         }
         Ok(())

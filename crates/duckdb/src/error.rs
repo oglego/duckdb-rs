@@ -344,8 +344,29 @@ impl error::Error for Error {
 // These are public but not re-exported by lib.rs, so only visible within crate.
 
 #[inline]
+unsafe fn error_from_duckdb_error_data(error_data: ffi::duckdb_error_data) -> Option<(ErrorCode, Option<String>)> {
+    if error_data.is_null() || !unsafe { ffi::duckdb_error_data_has_error(error_data) } {
+        return None;
+    }
+
+    let code = unsafe { ErrorCode::from(ffi::duckdb_error_data_error_type(error_data)) };
+    let c_err = unsafe { ffi::duckdb_error_data_message(error_data) };
+    let message = if c_err.is_null() {
+        None
+    } else {
+        Some(unsafe { CStr::from_ptr(c_err) }.to_string_lossy().to_string())
+    };
+    Some((code, message))
+}
+
+#[inline]
 fn error_from_duckdb_code(code: ffi::duckdb_state, message: Option<String>) -> Result<()> {
-    Err(Error::DuckDBFailure(ErrorCode::Unknown, message))
+    let error_code = match message.as_deref() {
+        Some(msg) if msg.starts_with("HTTP Error:") => ErrorCode::Http,
+        _ => ErrorCode::Unknown,
+    };
+    let _ = code;
+    Err(Error::DuckDBFailure(error_code, message))
 }
 
 #[cold]
@@ -355,15 +376,25 @@ pub fn result_from_duckdb_appender(code: ffi::duckdb_state, appender: *mut ffi::
         return Ok(());
     }
     unsafe {
-        let message = if (*appender).is_null() {
-            Some("appender is null".to_string())
+        let (error_code, message) = if (*appender).is_null() {
+            (ErrorCode::Unknown, Some("appender is null".to_string()))
         } else {
-            let c_err = ffi::duckdb_appender_error(*appender);
-            let message = Some(CStr::from_ptr(c_err).to_string_lossy().to_string());
+            let mut error_data = ffi::duckdb_appender_error_data(*appender);
+            let (error_code, message) = error_from_duckdb_error_data(error_data)
+                .unwrap_or_else(|| {
+                    let c_err = ffi::duckdb_appender_error(*appender);
+                    let message = if c_err.is_null() {
+                        None
+                    } else {
+                        Some(CStr::from_ptr(c_err).to_string_lossy().to_string())
+                    };
+                    (ErrorCode::Unknown, message)
+                });
+            ffi::duckdb_destroy_error_data(&mut error_data);
             ffi::duckdb_appender_destroy(appender);
-            message
+            (error_code, message)
         };
-        error_from_duckdb_code(code, message)
+        Err(Error::DuckDBFailure(error_code, message))
     }
 }
 

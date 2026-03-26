@@ -14,7 +14,7 @@ impl ScalarFunctionSet {
         unsafe {
             let rc = duckdb_add_scalar_function_to_set(self.ptr, func.ptr);
             if rc != DuckDBSuccess {
-                return Err(Error::DuckDBFailure(ffi::Error::new(rc), None));
+                return Err(Error::DuckDBFailure(crate::error::ErrorCode::Unknown, None));
             }
         }
 
@@ -25,7 +25,7 @@ impl ScalarFunctionSet {
         unsafe {
             let rc = ffi::duckdb_register_scalar_function_set(con, self.ptr);
             if rc != ffi::DuckDBSuccess {
-                return Err(Error::DuckDBFailure(ffi::Error::new(rc), None));
+                return Err(Error::DuckDBFailure(crate::error::ErrorCode::Unknown, None));
             }
         }
         Ok(())
