@@ -1,9 +1,9 @@
 use duckdb::{
+    Connection, Result,
     core::{DataChunkHandle, Inserter, LogicalTypeHandle, LogicalTypeId},
     types::DuckString,
     vscalar::{ScalarFunctionSignature, VScalar},
     vtab::arrow::WritableVector,
-    Connection, Result,
 };
 use libduckdb_sys::duckdb_string_t;
 
@@ -20,7 +20,7 @@ impl VScalar for ToUpper {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let out = output.flat_vector();
         let values = input.flat_vector(0);
-        
+
         // Convert the input vector to a slice of DuckDB strings
         let values_slice = values.as_slice_with_len::<duckdb_string_t>(input.len());
 
@@ -28,7 +28,7 @@ impl VScalar for ToUpper {
             let mut owned = *value;
             // Access the string data safely through the DuckString wrapper
             let s = DuckString::new(&mut owned).as_str();
-            
+
             // Perform the logic and insert into the output vector
             out.insert(0, s.to_uppercase().as_str());
         }
